@@ -1,23 +1,20 @@
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LinearRegression  # model
+# function to calculate mean abs error
 from sklearn.metrics import mean_absolute_error
+# function to split samples into train and test
 from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestRegressor
-import plotly.express as px
-import seaborn as sns
-import matplotlib.pyplot as plt
+from sklearn.ensemble import RandomForestRegressor  # model
 import numpy as np  # linear algebra
 import pandas as pd  # data processing, CSV file I/O (e.g. pd.read_csv)
-
-# Input data files are available in the read-only "../input/" directory
-
-import os
-for dirname, _, filenames in os.walk('/kaggle/input'):
-    for filename in filenames:
-        print(os.path.join(dirname, filename))
+import matplotlib.pyplot as plt  # plotting data
+import seaborn as sns  # plotting data
+import plotly.express as px
 
 %matplotlib inline
 
-_listings_raw = pd.read_csv('../input/boston/listings.csv', index_col="id")
+# reading listing dataset
+_listings_raw = pd.read_csv('./datasets/boston/listings.csv', index_col="id")
+
 _listings = _listings_raw.copy()
 
 print(_listings.shape)
@@ -26,9 +23,11 @@ print(_listings.info())
 
 
 def clean_listing_dataset():
+    """
     # step 1: remove columns from the data set that are not useful for price prediction
     # step 2: remove columns that has very high percentage of na values
     # step 3: transform price and other numeric columns from string to int,float type
+    """
     _cols_to_drop = ['listing_url', 'thumbnail_url', 'medium_url', 'picture_url', 'picture_url',
                      'xl_picture_url', 'host_url', 'host_thumbnail_url', 'host_picture_url',
                      'city', 'state', 'country', 'country_code', 'market', 'requires_license',
@@ -36,11 +35,14 @@ def clean_listing_dataset():
                      'calendar_updated', 'scrape_id', 'last_scraped', 'space', 'host_neighbourhood',
                      'neighborhood_overview', 'host_listings_count', 'zipcode', 'is_location_exact', 'host_location',
                      'host_total_listings_count', 'neighbourhood', 'smart_location', 'host_id']
+
     # droping columns that are not useful
     _listings.drop(_cols_to_drop, axis=1, inplace=True)
+
     # droping columns having no values or less than thres
     _thresh = len(_listings) * .35
     _listings.dropna(axis=1, thresh=_thresh, inplace=True)
+
     # remove $ and comma from price cols, convert it to float and fill na values by mean/median
     for _price_fe in ["cleaning_fee", "security_deposit", "price", "extra_people"]:
         # remove $ and comma from price, ignore na values so that we wont get any errors.
@@ -51,6 +53,7 @@ def clean_listing_dataset():
         # fill na values with mean/median
         _listings[_price_fe].fillna(
             _listings[_price_fe].median(), inplace=True)
+
     # remove % from rate cols and convert it to int
     for _rate in ['host_response_rate', 'host_acceptance_rate']:
         # replace % with blank
@@ -60,22 +63,30 @@ def clean_listing_dataset():
         _listings[_rate].fillna(method="backfill", inplace=True)
         # convert to int type
         _listings[_rate] = _listings[_rate].astype(int)
+
+    # fill na values using backfill method.
     _listings['host_response_time'].fillna(method="backfill", inplace=True)
+
     # drop rows having na of ["bathrooms", "bedrooms", "beds"] since they are less in number we can not put any assumption and add bias
     _listings.dropna(
         axis=0, subset=["bathrooms", "bedrooms", "beds"], inplace=True)
+
     # convert ["bathrooms", "bedrooms", "beds"] into int as they make more sense
     for _room in ["bathrooms", "bedrooms", "beds"]:
         _listings[_room] = _listings[_room].astype(int)
+
+    # fill na values for review columns by taking mean
     for _review in ["review_scores_rating", "review_scores_accuracy", "review_scores_cleanliness",
                     "review_scores_checkin", "review_scores_communication", "review_scores_location",
                     "review_scores_value", "reviews_per_month"]:
         _listings[_review].fillna(_listings[_review].mean(), inplace=True)
+
     print('data set after cleaning ::')
     print(_listings.info())
 
 
 clean_listing_dataset()
+
 
 plt.figure(figsize=(10, 8))
 plt.title('Price distribution')
@@ -219,6 +230,14 @@ X_train, X_test, y_train, y_test = train_test_split(
 
 
 def evaluate_model(_model, x_train, y_train, x_test, y_test):
+    """
+    INPUT PARAMS: model instance, x_train, y_train, x_test, y_test
+    DESCRIPTION: 
+    # step 1: function takes the model instance and fit x_train and y_train
+    # step 2: function takes the model instance and predict for x_test
+    # step 3: function calculates mean abs error for y_test and predictions
+    # step 4: plots actuals vs predicted values  
+    """
     _model.fit(x_train, y_train)
     _prediction = _model.predict(x_test)
     _mean_abs_err = mean_absolute_error(y_test, _prediction)
